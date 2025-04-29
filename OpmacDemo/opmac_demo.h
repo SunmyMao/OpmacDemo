@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QtWidgets/QMainWindow>
-#include <QSerialPort>
+#include "modbus_client.h"
 #include "ui_main.h"
 
 class OpmacDemo : public QMainWindow
@@ -15,6 +15,7 @@ public:
 private slots:
     void btnSerialPortOpenClicked(bool clicked);
     void btnSerialPortCloseClicked(bool clicked);
+    void btnReadOnceClicked(bool clicked);
 
 private:
     void initSerialPortSettings() const;
@@ -22,5 +23,5 @@ private:
 
     Ui::OpmacDemoClass ui;
 
-    QSerialPort* m_serial = nullptr;
+    modbus::Client* m_client = nullptr;
 };

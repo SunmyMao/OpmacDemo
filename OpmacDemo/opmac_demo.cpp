@@ -16,6 +16,7 @@ OpmacDemo::OpmacDemo(QWidget *parent)
 
     connect(ui.btnSerialOpen, &QPushButton::clicked, this,  &OpmacDemo::btnSerialPortOpenClicked);
     connect(ui.btnSerialClose, &QPushButton::clicked, this, &OpmacDemo::btnSerialPortCloseClicked);
+    connect(ui.btnReadOnce, &QPushButton::clicked, this, &OpmacDemo::btnReadOnceClicked);
 }
 
 OpmacDemo::~OpmacDemo()
@@ -24,18 +25,14 @@ OpmacDemo::~OpmacDemo()
 void OpmacDemo::btnSerialPortOpenClicked(bool clicked)
 {
     qDebug() << "open";
-    m_serial = new QSerialPort();
-    m_serial->setPortName(ui.cboxSerialPort->currentText());
-    m_serial->setBaudRate(ui.cboxBaudrate->currentData().toInt());
-    m_serial->setDataBits(static_cast<QSerialPort::DataBits>(ui.cboxDataBits->currentData().toInt()));
-    m_serial->setParity(static_cast<QSerialPort::Parity>(ui.cboxParity->currentData().toInt()));
-    m_serial->setStopBits(static_cast<QSerialPort::StopBits>(ui.cboxStopBits->currentData().toInt()));
-    if (!m_serial->open(QIODeviceBase::ReadWrite))
-    {
-        delete m_serial;
-        m_serial = nullptr;
-    }
-    if (m_serial != nullptr)
+
+    m_client = modbus::Client::alloc(ui.cboxSerialPort->currentText(),
+        static_cast<QSerialPort::BaudRate>(ui.cboxBaudrate->currentData().toInt()),
+        static_cast<QSerialPort::Parity>(ui.cboxParity->currentData().toInt()),
+        static_cast<QSerialPort::DataBits>(ui.cboxDataBits->currentData().toInt()),
+        static_cast<QSerialPort::StopBits>(ui.cboxStopBits->currentData().toInt())
+    );
+    if (m_client != nullptr)
     {
         ui.btnReadLoop->setEnabled(true);
         ui.btnReadOnce->setEnabled(true);
@@ -50,9 +47,7 @@ void OpmacDemo::btnSerialPortCloseClicked(bool clicked)
 {
     qDebug() << "close";
 
-    m_serial->close();
-    delete m_serial;
-    m_serial = nullptr;
+    modbus::Client::destory(&m_client);
 
     ui.btnReadLoop->setEnabled(false);
     ui.btnReadOnce->setEnabled(false);
@@ -60,6 +55,20 @@ void OpmacDemo::btnSerialPortCloseClicked(bool clicked)
     ui.btnSerialClose->setEnabled(false);
 
     ui.btnSerialOpen->setEnabled(true);
+}
+
+void OpmacDemo::btnReadOnceClicked(bool clicked)
+{
+    QByteArray dest;
+    modbus::Request req;
+    req.set_slave_id(1);
+    req.set_func_code(0x03);
+    req.set_addr(0);
+    modbus::Response* response = m_client->request(&req);
+    if (response == nullptr)
+        return;
+    qDebug() << response->data_count();
+    qDebug() << response->data_at(0);
 }
 
 void OpmacDemo::initSerialPortSettings() const

@@ -67,9 +67,8 @@ namespace modbus
         return (crc_hi << 8 | crc_lo);
     }
 
-    static void wait_for_3_5_byte(const QSerialPort& serial)
+    static void wait_for_3_5_byte(int32_t baudRate)
     {
-        int baudRate = serial.baudRate();
         if (baudRate <= 0)
             baudRate = 9600;
 
@@ -81,8 +80,80 @@ namespace modbus
         QThread::msleep(delayMsRounded);
     }
 
+    static bool _is_read_request(uint8_t func_code)
+    {
+        return func_code == 0x03 || func_code == 0x04;
+    }
+
+    uint16_t Request::response_buffer_size()
+    {
+        if (_is_read_request(_func_code))
+            return 1 + 1 + 1 + 2 * _register_coil_count + 2;
+        if (_func_code == 0x06)
+            return 1 + 1 + 2 + 2 + 2; // slaveid(1byte)_functioncode(1byte)_address(2bytes)_value(2bytes)_crc(2bytes)
+        return 0;
+    }
+
+    const uint8_t* Request::build_cmd(uint16_t& length)
+    {
+        if ((_func_code == 0x03 || _func_code == 0x04) && _register_coil_count == 0)
+        {
+            length = 0;
+            return nullptr;
+        }
+
+        memset(_buffer, 0, sizeof(_buffer));
+        _buffer[length++] = _slave_id;
+        _buffer[length++] = _func_code;
+
+        _buffer[length++] = _addr >> 8;
+        _buffer[length++] = _addr & 0xff;
+
+        _buffer[length++] = _register_coil_count >> 8;
+        _buffer[length++] = _register_coil_count & 0xff;
+
+        if (!_is_read_request(_func_code))
+        {
+
+        }
+        uint16_t crc = crc16(_buffer, length);
+        _buffer[length++] = crc & 0xff;
+        _buffer[length++] = crc >> 8;
+
+        return _buffer;
+    }
+
+    Response* Response::alloc(const uint8_t* buffer, uint16_t buffer_size)
+    {
+        Response* o = new Response();
+
+        uint16_t idx = 0;
+        o->_slave_id = buffer[idx++];
+        o->_func_code = buffer[idx++];
+
+        uint8_t data_length_in_byte = 0;
+        memcpy(&data_length_in_byte, buffer + idx, sizeof(data_length_in_byte));
+        idx += 1;
+
+        o->_data_array.resize(data_length_in_byte / 2);
+        if ((buffer_size - 3 - 2) / 2 != o->_data_array.size())
+        {
+            delete o;
+            return nullptr;
+        }
+        for (uint8_t i = 0; i < data_length_in_byte / 2; ++i)
+        {
+            uint16_t temp = 0;
+            uint8_t* ptemp = reinterpret_cast<uint8_t*>(&temp);
+            ptemp[1] = *(buffer + (idx + i * 2));
+            ptemp[0] = *(buffer + (idx + i * 2 + 1));
+            o->_data_array[i] = temp;
+        }
+        return o;
+    }
+
     Client* Client::alloc(const QString& name, QSerialPort::BaudRate baud, QSerialPort::Parity parity,
-        QSerialPort::DataBits data, QSerialPort::StopBits stop)
+                          QSerialPort::DataBits data, QSerialPort::StopBits stop)
     {
         Client* o = new Client();
         o->m_serial.setPortName(name);
@@ -108,110 +179,24 @@ namespace modbus
         *o = nullptr;
     }
 
-    int32_t Client::read_bits(uint8_t slave, uint16_t addr, uint16_t nb, QByteArray& dest)
+    Response* Client::request(Request* req)
     {
-        wait_for_3_5_byte(m_serial);
-
-        QByteArray data;
-        data.push_back(slave);
-        data.push_back(0x01);
-        data.push_back(addr >> 8);
-        data.push_back(addr & 0x00ff);
-        data.push_back( nb >> 8);
-        data.push_back(nb & 0x00ff);
-        qint64 ret = m_serial.write(data.data(), data.length());
-        if (ret != data.length())
-            return EWOULDBLOCK;
+        uint16_t cmd_length = 0;
+        const uint8_t* cmd = req->build_cmd(cmd_length);
+        qint64 ret = m_serial.write(reinterpret_cast<const char*>(cmd), cmd_length);
+        if (ret != cmd_length)
+            return nullptr;
 
         while (!m_serial.isReadable())
             QThread::msleep(1);
 
         char buffer[256];
         size_t recvn = 0;
-        while ((recvn = m_serial.read(buffer, 256)) == 256)
-            dest.push_back(QByteArray(buffer, recvn));
-        dest.push_back(QByteArray(buffer, recvn));
-        return 0;
-    }
-
-    int32_t Client::read_registers(uint8_t slave, uint16_t addr, int16_t nb, QByteArray& dest)
-    {
-        uint16_t length = 0;
-        uint8_t cmd[12];
-        cmd[length++] = slave;
-        cmd[length++] = 0x03;
-        cmd[length++] = addr >> 8;
-        cmd[length++] = addr & 0xff;
-        cmd[length++] = nb >> 8;
-        cmd[length++] = nb & 0xff;
-        uint16_t crc = crc16(cmd, length);
-        cmd[length++] = crc & 0xff;
-        cmd[length++] = crc >> 8;
-
-        qint64 ret = m_serial.write((const char*)cmd, length);
-        if (ret != length)
-            return EWOULDBLOCK;
-
-        while (!m_serial.isReadable())
-            QThread::msleep(1);
-
-        char buffer[256];
-        size_t recvn = 0;
-        while ((recvn = m_serial.read(buffer, 256)) == 256)
-            dest.push_back(QByteArray(buffer, recvn));
-        dest.push_back(QByteArray(buffer, recvn));
-        return 0;
-    }
-
-    int32_t Client::read_input_registers(uint8_t slave, uint16_t addr, int nb, QByteArray& dest)
-    {
-        QByteArray cmd;
-        cmd.push_back(slave);
-        cmd.push_back(0x03);
-        cmd.push_back(addr >> 8);
-        cmd.push_back(addr & 0xff);
-        cmd.push_back(nb >> 8);
-        cmd.push_back(nb & 0xff);
-
-        qint64 ret = m_serial.write(cmd.data(), cmd.length());
-        if (ret != cmd.length())
-            return EWOULDBLOCK;
-
-        while (!m_serial.isReadable())
-            QThread::msleep(1);
-
-        char buffer[256];
-        size_t recvn = 0;
-        while ((recvn = m_serial.read(buffer, 256)) == 256)
-            dest.push_back(QByteArray(buffer, recvn));
-        dest.push_back(QByteArray(buffer, recvn));
-        return 0;
-    }
-
-    int32_t Client::write_register(uint8_t slave, uint16_t addr, int16_t nb, QByteArray& dest)
-    {
-        QByteArray cmd;
-        cmd.push_back(slave);
-        cmd.push_back(0x06);
-        cmd.push_back(addr >> 8);
-        cmd.push_back(addr & 0xff);
-        cmd.push_back(nb >> 8);
-        cmd.push_back(nb & 0xff);
-
-
-
-        qint64 ret = m_serial.write(cmd.data(), cmd.length());
-        if (ret != cmd.length())
-            return EWOULDBLOCK;
-
-        while (!m_serial.isReadable())
-            QThread::msleep(1);
-
-        char buffer[256];
-        size_t recvn = 0;
-        while ((recvn = m_serial.read(buffer, 256)) == 256)
-            dest.push_back(QByteArray(buffer, recvn));
-        dest.push_back(QByteArray(buffer, recvn));
-        return 0;
+        size_t recvd = 0;
+        while ((recvn = m_serial.read(buffer + recvd, 256)) == 256)
+            recvd += recvn;
+        recvd += recvn;
+        Response* response = Response::alloc(reinterpret_cast<const uint8_t*>(buffer), recvd);
+        return response;
     }
 };
