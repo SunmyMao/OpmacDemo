@@ -42,7 +42,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtInstall>6.2.4_msvc2019_64</QtInstall>
-    <QtModules>core;gui;widgets</QtModules>
+    <QtModules>core;gui;widgets;serialport</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
   </PropertyGroup>
   <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
@@ -63,6 +63,22 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
   </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Link>
+      <AdditionalDependencies>Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <ClCompile>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
     <ClCompile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -95,12 +111,22 @@
     <QtRcc Include="main.qrc" />
     <QtUic Include="main.ui" />
     <QtMoc Include="opmac_demo.h" />
-    <ClCompile Include="modbus_client.cpp" />
+    <ClCompile Include="..\libmodbus\modbus-data.c" />
+    <ClCompile Include="..\libmodbus\modbus-rtu.c" />
+    <ClCompile Include="..\libmodbus\modbus-tcp.c" />
+    <ClCompile Include="..\libmodbus\modbus.c" />
     <ClCompile Include="opmac_demo.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="modbus_client.h" />
+    <ClInclude Include="..\libmodbus\modbus-private.h" />
+    <ClInclude Include="..\libmodbus\modbus-rtu-private.h" />
+    <ClInclude Include="..\libmodbus\modbus-rtu.h" />
+    <ClInclude Include="..\libmodbus\modbus-tcp-private.h" />
+    <ClInclude Include="..\libmodbus\modbus-tcp.h" />
+    <ClInclude Include="..\libmodbus\modbus-version.h" />
+    <ClInclude Include="..\libmodbus\modbus.h" />
+    <ClInclude Include="..\libmodbus\win32\config.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

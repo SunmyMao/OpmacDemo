@@ -21,6 +21,9 @@
       <UniqueIdentifier>{639EADAA-A684-42e4-A9AD-28FC9BCB8F7C}</UniqueIdentifier>
       <Extensions>ts</Extensions>
     </Filter>
+    <Filter Include="libmodbus">
+      <UniqueIdentifier>{76b850bb-eb11-4733-a012-06476379252d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="main.qrc">
@@ -40,13 +43,43 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="modbus_client.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\libmodbus\modbus.c">
+      <Filter>libmodbus</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libmodbus\modbus-data.c">
+      <Filter>libmodbus</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libmodbus\modbus-rtu.c">
+      <Filter>libmodbus</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libmodbus\modbus-tcp.c">
+      <Filter>libmodbus</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="modbus_client.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
+    <ClInclude Include="..\libmodbus\modbus.h">
+      <Filter>libmodbus</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libmodbus\modbus-private.h">
+      <Filter>libmodbus</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libmodbus\modbus-rtu.h">
+      <Filter>libmodbus</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libmodbus\modbus-rtu-private.h">
+      <Filter>libmodbus</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libmodbus\modbus-version.h">
+      <Filter>libmodbus</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libmodbus\win32\config.h">
+      <Filter>libmodbus</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libmodbus\modbus-tcp.h">
+      <Filter>libmodbus</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libmodbus\modbus-tcp-private.h">
+      <Filter>libmodbus</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

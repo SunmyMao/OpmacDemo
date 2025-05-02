@@ -1,8 +1,9 @@
 #pragma once
 
 #include <QtWidgets/QMainWindow>
-#include "modbus_client.h"
+#include <QTimer>
 #include "ui_main.h"
+#include "../libmodbus/modbus.h"
 
 class OpmacDemo : public QMainWindow
 {
@@ -15,13 +16,21 @@ public:
 private slots:
     void btnSerialPortOpenClicked(bool clicked);
     void btnSerialPortCloseClicked(bool clicked);
+
     void btnReadOnceClicked(bool clicked);
+    void btnReadLoopStartClicked(bool clicked);
+    void btnReadLoopStopClicked(bool clicked);
+
+    void btnWriteClicked(bool clicked);
+    void readTimeout();
 
 private:
     void initSerialPortSettings() const;
     void initWritableVariableCbox() const;
+    void batchRead() const;
 
     Ui::OpmacDemoClass ui;
+    QTimer m_timer;
 
-    modbus::Client* m_client = nullptr;
+    modbus_t* _modbus_ctx = nullptr;
 };

@@ -762,7 +762,7 @@
           <widget class="QComboBox" name="cboxVariable"/>
          </item>
          <item>
-          <widget class="QLineEdit" name="lineEdit_22"/>
+          <widget class="QLineEdit" name="editValue"/>
          </item>
         </layout>
        </item>
